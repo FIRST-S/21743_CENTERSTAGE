@@ -26,12 +26,15 @@ public class work extends LinearOpMode {
     private DcMotorEx backLeftDrive = null;
     private DcMotorEx backRightDrive = null;
 
+    private  DcMotorEx climberMoter = null;
+
     public void initializeMotors()
     {
         frontLeftDrive = hardwareMap.get(DcMotorEx.class, "frontleft");
         frontRightDrive = hardwareMap.get(DcMotorEx.class, "frontright");
         backLeftDrive = hardwareMap.get(DcMotorEx.class, "backleft");
         backRightDrive = hardwareMap.get(DcMotorEx.class, "backright");
+        climberMoter = hardwareMap.get(DcMotorEx.class, "climber");
 
         frontRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
         backRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -45,6 +48,7 @@ public class work extends LinearOpMode {
         frontRightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backRightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backLeftDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        climberMoter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
 
     }
@@ -117,6 +121,16 @@ public class work extends LinearOpMode {
         }
     }
 
+    private void climber() {
+
+        if (isStopRequested()) return;
+
+        while (opModeIsActive()) {
+            double y = -gamepad2.left_stick_y; // Remember, Y stick value is reversed
+            backRightDrive.setPower(y);
+        }
+    }
+
     private void joystickMecanumDriveFieldCentric() {
 
         if (isStopRequested()) return;
@@ -158,6 +172,7 @@ public class work extends LinearOpMode {
 
             //joystickTankDrive();
             joystickMecanumDrive();
+            climber();
 //            dashboardDemo();
         }
     }
