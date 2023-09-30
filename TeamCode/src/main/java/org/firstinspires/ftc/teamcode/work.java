@@ -24,6 +24,8 @@ public class work extends LinearOpMode {
 
     private  DcMotorEx climberMoter = null;
 
+    private DcMotorEx inatkeArmMoter = null;
+
     public void initializeMotors()
     {
         frontLeftDrive = hardwareMap.get(DcMotorEx.class, "frontleft");
@@ -31,20 +33,26 @@ public class work extends LinearOpMode {
         backLeftDrive = hardwareMap.get(DcMotorEx.class, "backleft");
         backRightDrive = hardwareMap.get(DcMotorEx.class, "backright");
         climberMoter = hardwareMap.get(DcMotorEx.class, "climber");
+        inatkeArmMoter = hardwareMap.get(DcMotorEx.class, "intakeArmMoter");
 
         frontRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
         backRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
+        climberMoter.setDirection(DcMotorSimple.Direction.REVERSE);
+        inatkeArmMoter.setDirection(DcMotorSimple.Direction.REVERSE);
 
         backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        climberMoter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        inatkeArmMoter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         frontLeftDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         frontRightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backRightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backLeftDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         climberMoter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        inatkeArmMoter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
 
     }
@@ -94,37 +102,43 @@ public class work extends LinearOpMode {
     }
     private void joystickMecanumDrive() {
 
-        if (isStopRequested()) return;
+        double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
+        double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
+        double rx = gamepad1.right_stick_x;
+        double lf = gamepad2.left_stick_y;
 
-        while (opModeIsActive()) {
-            double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
-            double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
-            double rx = gamepad1.right_stick_x;
 
-            // Denominator is the largest motor power (absolute value) or 1
-            // This ensures all the powers maintain the same ratio,
-            // but only if at least one is out of the range [-1, 1]
-            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
-            double frontLeftPower = -(y + x + rx) / denominator; //A-RC has negative before parentheses and B-RC has no negative
-            double backLeftPower = -(y - x + rx) / denominator;
-            double frontRightPower = -(y - x - rx) / denominator;
-            double backRightPower = -(y + x - rx) / denominator;
+        // Denominator is the largest motor power (absolute value) or 1
+        // This ensures all the powers maintain the same ratio,
+        // but only if at least one is out of the range [-1, 1]
+        double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
+        double frontLeftPower = -(y + x + rx) / denominator; //A-RC has negative before parentheses and B-RC has no negative
+        double backLeftPower = -(y - x + rx) / denominator;
+        double frontRightPower = -(y - x - rx) / denominator;
+        double backRightPower = -(y + x - rx) / denominator;
 
-            frontLeftDrive.setPower(frontLeftPower);
-            backLeftDrive.setPower(backLeftPower);
-            frontRightDrive.setPower(frontRightPower);
-            backRightDrive.setPower(backRightPower);
-        }
+        frontLeftDrive.setPower(frontLeftPower);
+        backLeftDrive.setPower(backLeftPower);
+        frontRightDrive.setPower(frontRightPower);
+        backRightDrive.setPower(backRightPower);
+
+        climberMoter.setPower(lf);
+        inatkeArmMoter.setPower(gamepad2.right_stick_y);
+
     }
 
     private void climber() {
-
-        if (isStopRequested()) return;
-
-        while (opModeIsActive()) {
-            double y = -gamepad2.left_stick_y; // Remember, Y stick value is reversed
-            climberMoter.setPower(y);
+        float y = -gamepad2.left_stick_y; // Remember, Y stick value is reversed
+        if (gamepad2.y){
+            climberMoter.setPower(1);
         }
+        else if (gamepad2.a) {
+            climberMoter.setPower(-1);
+        }
+        else {
+            climberMoter.setPower(0);
+        }
+
     }
 
     private void joystickMecanumDriveFieldCentric() {
@@ -164,11 +178,12 @@ public class work extends LinearOpMode {
             telemetry.addData("FR (1)", frontRightDrive.getCurrentPosition());
             telemetry.addData("BL (2)", backLeftDrive.getCurrentPosition());
             telemetry.addData("BR (3)", backRightDrive.getCurrentPosition());
+//            telemetry.addData("climber pos", climberMoter.getCurrentPosition());
             updateTelemetry(telemetry);
 
             //joystickTankDrive();
             joystickMecanumDrive();
-            climber();
+            //climber();
 //            dashboardDemo();
         }
     }
