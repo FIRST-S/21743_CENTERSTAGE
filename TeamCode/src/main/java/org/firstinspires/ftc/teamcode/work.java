@@ -1,7 +1,3 @@
-
-
-
-
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -127,7 +123,7 @@ public class work extends LinearOpMode {
 
         while (opModeIsActive()) {
             double y = -gamepad2.left_stick_y; // Remember, Y stick value is reversed
-            backRightDrive.setPower(y);
+            climberMoter.setPower(y);
         }
     }
 
