@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
 
 @TeleOp (name = "pls work" ,group = "Linear Opmode")
 
@@ -22,37 +23,46 @@ public class work extends LinearOpMode {
     private DcMotorEx backLeftDrive = null;
     private DcMotorEx backRightDrive = null;
 
-    private  DcMotorEx climberMoter = null;
+    private DcMotorEx climberMoter = null;
 
-    private DcMotorEx inatkeArmMoter = null;
+    private DcMotorEx wrist = null;
+
+    private Servo intake = null;
+
+    private DcMotorEx arm = null;
 
     public void initializeMotors()
     {
-        frontLeftDrive = hardwareMap.get(DcMotorEx.class, "frontleft");
-        frontRightDrive = hardwareMap.get(DcMotorEx.class, "frontright");
-        backLeftDrive = hardwareMap.get(DcMotorEx.class, "backleft");
-        backRightDrive = hardwareMap.get(DcMotorEx.class, "backright");
-        climberMoter = hardwareMap.get(DcMotorEx.class, "climber");
-        inatkeArmMoter = hardwareMap.get(DcMotorEx.class, "intakeArmMoter");
+        frontLeftDrive = hardwareMap.get(DcMotorEx.class, "FL");
+        frontRightDrive = hardwareMap.get(DcMotorEx.class, "FR");
+        backLeftDrive = hardwareMap.get(DcMotorEx.class, "BL");
+        backRightDrive = hardwareMap.get(DcMotorEx.class, "BR");
+        //climberMoter = hardwareMap.get(DcMotorEx.class, "climber");
+        arm = hardwareMap.get(DcMotorEx.class, "Arm");
+        wrist = hardwareMap.get(DcMotorEx.class, "wrist");
+        intake = hardwareMap.get(Servo.class, "intake");
+
 
         frontRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
         backRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
-        climberMoter.setDirection(DcMotorSimple.Direction.REVERSE);
-        inatkeArmMoter.setDirection(DcMotorSimple.Direction.REVERSE);
+        //climberMoter.setDirection(DcMotorSimple.Direction.REVERSE);
 
         backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        climberMoter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        inatkeArmMoter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        //climberMoter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         frontLeftDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         frontRightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backRightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backLeftDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        climberMoter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        inatkeArmMoter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        //climberMoter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        arm.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        arm.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        arm.setTargetPosition(0);
+        arm.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
 
     }
@@ -122,8 +132,6 @@ public class work extends LinearOpMode {
         frontRightDrive.setPower(frontRightPower);
         backRightDrive.setPower(backRightPower);
 
-        climberMoter.setPower(lf);
-        inatkeArmMoter.setPower(gamepad2.right_stick_y);
 
     }
 
@@ -141,29 +149,48 @@ public class work extends LinearOpMode {
 
     }
 
-    private void joystickMecanumDriveFieldCentric() {
-
-        if (isStopRequested()) return;
-
-        while (opModeIsActive()) {
-            double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
-            double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
-            double rx = gamepad1.right_stick_x;
-
-            // Denominator is the largest motor power (absolute value) or 1
-            // This ensures all the powers m    aintain the same ratio,
-            // but only if at least one is out of the range [-1, 1]
-            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
-            double frontLeftPower = -(y + x + rx) / denominator;
-            double backLeftPower = -(y - x + rx) / denominator;
-            double frontRightPower = -(y - x - rx) / denominator;
-            double backRightPower = -(y + x - rx) / denominator;
-
-            frontLeftDrive.setPower(frontLeftPower);
-            backLeftDrive.setPower(backLeftPower);
-            frontRightDrive.setPower(frontRightPower);
-            backRightDrive.setPower(backRightPower);
+    public void armFunctions() {
+        boolean pickUpPose = false;
+        boolean scorePos = false;
+        if (gamepad1.a){
+            if (pickUpPose){
+                pickUpPose = false;
+            }
+            else {
+                pickUpPose = true;
+            }
         }
+        else if (gamepad1.b){
+            if (scorePos){
+                scorePos = false;
+            }
+            else {
+                if (pickUpPose == false){
+                    scorePos = true;
+                }
+                else {
+                    pickUpPose = false;
+                    scorePos = true;
+                }
+            }
+        }
+        if (pickUpPose) {
+            arm.setTargetPosition(0);
+            wrist.setTargetPosition(0);
+            intake.setPosition(0);
+        } 
+        else if (scorePos) {
+            arm.setTargetPosition(0);
+            wrist.setTargetPosition(0);
+            intake.setPosition(0);
+        }
+        else {
+            arm.setTargetPosition(0);
+            wrist.setTargetPosition(0);
+            intake.setPosition(0);
+        }
+
+
     }
 
 
@@ -171,6 +198,9 @@ public class work extends LinearOpMode {
 
     public void runOpMode()  {
         initializeMotors();
+        intake.scaleRange(0,1);
+        intake.setDirection(Servo.Direction.FORWARD);
+        intake.setPosition(0);
 
         waitForStart();
         while (opModeIsActive()) {
@@ -178,6 +208,11 @@ public class work extends LinearOpMode {
             telemetry.addData("FR (1)", frontRightDrive.getCurrentPosition());
             telemetry.addData("BL (2)", backLeftDrive.getCurrentPosition());
             telemetry.addData("BR (3)", backRightDrive.getCurrentPosition());
+            telemetry.addData("arm pos", arm.getCurrentPosition());
+            telemetry.addData("wrist pos", wrist.getCurrentPosition());
+            telemetry.addData("intake pos", intake.getPosition());
+
+
 //            telemetry.addData("climber pos", climberMoter.getCurrentPosition());
             updateTelemetry(telemetry);
 
