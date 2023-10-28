@@ -1,11 +1,15 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 @TeleOp (name = "pls work" ,group = "Linear Opmode")
 
@@ -13,9 +17,17 @@ import com.qualcomm.robotcore.hardware.Servo;
 public class work extends LinearOpMode {
     //Dashboard demo variables
     public static double ORBITAL_FREQUENCY = 0.05;
+
+    public static boolean intakeOpen = true;
     public static double SPIN_FREQUENCY = 0.25;
+
+    public static double INTAKE_OPEN_POS = 0.0;
+    public static double INTAKE_CLOSE_POS = 0.4;
     public static double ORBITAL_RADIUS = 50;
     public static double SIDE_LENGTH = 10;
+
+    private IMU imu = null;      // Control/Expansion Hub IMU
+
 
     //Motor demo variables
     private DcMotorEx frontLeftDrive = null;
@@ -25,7 +37,6 @@ public class work extends LinearOpMode {
 
     private DcMotorEx climberMoter = null;
 
-    private DcMotorEx wrist = null;
 
     private Servo intake = null;
 
@@ -39,7 +50,6 @@ public class work extends LinearOpMode {
         backRightDrive = hardwareMap.get(DcMotorEx.class, "BR");
         //climberMoter = hardwareMap.get(DcMotorEx.class, "climber");
         arm = hardwareMap.get(DcMotorEx.class, "Arm");
-        wrist = hardwareMap.get(DcMotorEx.class, "wrist");
         intake = hardwareMap.get(Servo.class, "intake");
 
 
@@ -150,54 +160,103 @@ public class work extends LinearOpMode {
     }
 
     public void armFunctions() {
-        boolean pickUpPose = false;
-        boolean scorePos = false;
-        if (gamepad1.a){
-            if (pickUpPose){
-                pickUpPose = false;
-            }
-            else {
-                pickUpPose = true;
-            }
+//        boolean pickUpPose = false;
+//        boolean scorePos = false;
+//        if (gamepad1.a){
+//            if (pickUpPose){
+//                pickUpPose = false;
+//            }
+//            else {
+//                pickUpPose = true;
+//            }
+//        }
+//        else if (gamepad1.b){
+//            if (scorePos){
+//                scorePos = false;
+//            }
+//            else {
+//                if (pickUpPose == false){
+//                    scorePos = true;
+//                }
+//                else {
+//                    pickUpPose = false;
+//                    scorePos = true;
+//                }
+//            }
+//        }
+        if (gamepad2.x) {
+            arm.setTargetPosition(-110);
         }
-        else if (gamepad1.b){
-            if (scorePos){
-                scorePos = false;
-            }
-            else {
-                if (pickUpPose == false){
-                    scorePos = true;
-                }
-                else {
-                    pickUpPose = false;
-                    scorePos = true;
-                }
-            }
+        else if (gamepad2.b) {
+            arm.setTargetPosition(-740);
         }
-        if (pickUpPose) {
-            arm.setTargetPosition(0);
-            wrist.setTargetPosition(0);
-            intake.setPosition(0);
-        } 
-        else if (scorePos) {
-            arm.setTargetPosition(0);
-            wrist.setTargetPosition(0);
-            intake.setPosition(0);
+        else if (gamepad2.a){
+            arm.setTargetPosition(-30);
         }
-        else {
-            arm.setTargetPosition(0);
-            wrist.setTargetPosition(0);
-            intake.setPosition(0);
+
+        if (gamepad1.right_bumper){
+            intake.setPosition(INTAKE_CLOSE_POS);
+        }
+        if (gamepad1.left_bumper){
+            intake.setPosition(INTAKE_OPEN_POS);
         }
 
 
     }
+    private void fieldCentricDrive() {
+        double y = gamepad1.left_stick_y; // Remember, Y stick value is reversed
+        double x = -gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
+        double rx = -gamepad1.right_stick_x;
+        double lf = -gamepad2.left_stick_y;
+
+        // Calculate the current angle of the robot (yaw) relative to the field.
+        double robotAngle = -Math.toRadians(imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES)); // Modify this to get the actual robot angle.
+
+        // Calculate the field-centric components of movement.
+        double fieldX = x * Math.cos(robotAngle) - y * Math.sin(robotAngle);
+        double fieldY = x * Math.sin(robotAngle) + y * Math.cos(robotAngle);
+
+        // Denominator is the largest motor power (absolute value) or 1
+        // This ensures all the powers maintain the same ratio,
+        // but only if at least one is out of the range [-1, 1]
+        double denominator = Math.max(Math.abs(fieldY) + Math.abs(fieldX) + Math.abs(rx), 1);
+        double frontLeftPower = (fieldY + fieldX + rx) / denominator;
+        double backLeftPower = (fieldY - fieldX + rx) / denominator;
+        double frontRightPower = (fieldY - fieldX - rx) / denominator;
+        double backRightPower = (fieldY + fieldX - rx) / denominator;
+
+        // Set the motor powers.
+        frontLeftDrive.setPower(frontLeftPower);
+        backLeftDrive.setPower(backLeftPower);
+        frontRightDrive.setPower(frontRightPower);
+        backRightDrive.setPower(backRightPower);
+    }
+
+    // Modify this method to return the actual robot angle in degrees.
+    private double getCurrentRobotAngle() {
+        // Implement this method to return the current robot angle in degrees.
+        // You might use sensors like a gyro or IMU to get the robot's orientation.
+        // Make sure it returns the angle in degrees.
+        return 0.0; // Replace with actual implementation.
+    }
+
 
 
 
 
     public void runOpMode()  {
         initializeMotors();
+        imu = hardwareMap.get(IMU.class, "imu");
+        RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.RIGHT;
+        RevHubOrientationOnRobot.UsbFacingDirection  usbDirection  = RevHubOrientationOnRobot.UsbFacingDirection.UP;
+        RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
+        imu.initialize(new IMU.Parameters(orientationOnRobot));
+        imu.resetYaw();
+
+
+
+
+
         intake.scaleRange(0,1);
         intake.setDirection(Servo.Direction.FORWARD);
         intake.setPosition(0);
@@ -209,15 +268,17 @@ public class work extends LinearOpMode {
             telemetry.addData("BL (2)", backLeftDrive.getCurrentPosition());
             telemetry.addData("BR (3)", backRightDrive.getCurrentPosition());
             telemetry.addData("arm pos", arm.getCurrentPosition());
-            telemetry.addData("wrist pos", wrist.getCurrentPosition());
             telemetry.addData("intake pos", intake.getPosition());
+            telemetry.addData("yaw", imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
+            armFunctions();
 
 
 //            telemetry.addData("climber pos", climberMoter.getCurrentPosition());
             updateTelemetry(telemetry);
 
             //joystickTankDrive();
-            joystickMecanumDrive();
+//            joystickMecanumDrive();
+            fieldCentricDrive();
             //climber();
 //            dashboardDemo();
         }
